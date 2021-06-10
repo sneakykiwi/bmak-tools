@@ -178,7 +178,7 @@ func (bm *Bmak) jrs(t int64) (float64, float64) {
 	var m bool
 	var o []int64
 	a = math.Floor(1e5*rand.Float64() + 1e4)
-	e = fmt.Sprintf("%f", float64(t)+a)
+	e = fmt.Sprintf("%f", float64(t)*a)
 	n = 0
 	m = len(e) >= 18
 	for len(o) < 6 {
