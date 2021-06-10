@@ -1,15 +1,20 @@
 package bmak_tools
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Bmak struct {
-	Fpcf struct {
+	CookieValue string
+	Site        string
+	FormInfo    string
+	Fpcf        struct {
 		Fpvalstr        string `json:"fpValstr"`
 		Fpvalcalculated bool   `json:"fpValCalculated"`
 		Rval            string `json:"rVal"`
@@ -95,21 +100,22 @@ type Bmak struct {
 	MnCt              int           `json:"mn_ct"`
 	MnCc              string        `json:"mn_cc"`
 	MnCd              int           `json:"mn_cd"`
-	MnLc              []interface{} `json:"mn_lc"`
-	MnLd              []interface{} `json:"mn_ld"`
-	MnLcl             int           `json:"mn_lcl"`
-	MnAl              []interface{} `json:"mn_al"`
-	MnIl              []interface{} `json:"mn_il"`
-	MnTcl             []interface{} `json:"mn_tcl"`
-	MnR               []interface{} `json:"mn_r"`
-	MnRt              int           `json:"mn_rt"`
-	MnWt              int           `json:"mn_wt"`
-	MnAbck            string        `json:"mn_abck"`
-	MnPsn             string        `json:"mn_psn"`
-	MnTs              string        `json:"mn_ts"`
-	MnLg              []interface{} `json:"mn_lg"`
-	Loap              int           `json:"loap"`
-	Dcs               int           `json:"dcs"`
+	Mnrts             int
+	MnLc              []string     `json:"mn_lc"`
+	MnLd              []int     `json:"mn_ld"`
+	MnLcl             int               `json:"mn_lcl"`
+	MnAl              []string          `json:"mn_al"`
+	MnIl              []int             `json:"mn_il"`
+	MnTcl             []int             `json:"mn_tcl"`
+	MnR               map[string]string `json:"mn_r"`
+	MnRt              int               `json:"mn_rt"`
+	MnWt              int               `json:"mn_wt"`
+	MnAbck            string            `json:"mn_abck"`
+	MnPsn             string            `json:"mn_psn"`
+	MnTs              string            `json:"mn_ts"`
+	MnLg              []string          `json:"mn_lg"`
+	Loap              int               `json:"loap"`
+	Dcs               int               `json:"dcs"`
 	Listfunctions     struct {
 	} `json:"listFunctions"`
 	StartTs     int64  `json:"start_ts"`
@@ -159,6 +165,11 @@ type Bmak struct {
 	Den         int    `json:"den"`
 }
 
+//getCfDate, its basically an almost mirror function of akamai's get_cf_date() func
+func (bm *Bmak) getCfDate() int64 {
+	return time.Now().UTC().UnixNano() / 1e6
+}
+
 //jrs, returns 2 float64 variables, it does some weird shit, i think it has to do with time parsing not sure
 func (bm *Bmak) jrs(t int64) (float64, float64) {
 	var a float64
@@ -181,6 +192,29 @@ func (bm *Bmak) jrs(t int64) (float64, float64) {
 	}
 	return a, bm.cal_dis(o)
 }
+
+//mn_s, completely diff than the akamai's version but what it does is it basically hashes the param and returns the hash chunk
+func (bm *Bmak) mn_s(t string) []int {
+	bytesdt := []byte(t)
+	hasher := sha256.New()
+	hasher.Write(bytesdt)
+	return convertBytetoInt(hasher.Sum(nil))
+}
+
+
+func (bm *Bmak) bdm(t []int, a int) int {
+	e := 0
+	for n := 0; n < len(t); n++ {
+		e = e<<8 | t[n]>>0
+		e %= a
+	}
+	return e
+}
+
+func (bm *Bmak) mn_pr() string {
+	return fmt.Sprintf("%s;%s;%s;%s;", strings.Join(bm.MnAl, ","), strings.Join(convertIntToString(bm.MnTcl), ","), strings.Join(convertIntToString(bm.MnIl), ","), strings.Join(bm.MnLg, ","))
+}
+
 
 //cal_dis does some weird math things that i dont rly understand but i was lucky enough to just basically copy and paste it
 func (bm *Bmak) cal_dis(t []int64) float64 {
